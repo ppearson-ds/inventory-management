@@ -1,56 +1,75 @@
 <template>
-  <div class="app">
-    <header class="top-nav">
-      <div class="nav-container">
-        <div class="logo">
-          <h1>{{ t('nav.companyName') }}</h1>
-          <span class="subtitle">{{ t('nav.subtitle') }}</span>
-        </div>
-        <nav class="nav-tabs">
-          <router-link to="/" :class="{ active: $route.path === '/' }">
-            {{ t('nav.overview') }}
-          </router-link>
-          <router-link to="/inventory" :class="{ active: $route.path === '/inventory' }">
-            {{ t('nav.inventory') }}
-          </router-link>
-          <router-link to="/orders" :class="{ active: $route.path === '/orders' }">
-            {{ t('nav.orders') }}
-          </router-link>
-          <router-link to="/spending" :class="{ active: $route.path === '/spending' }">
-            {{ t('nav.finance') }}
-          </router-link>
-          <router-link to="/demand" :class="{ active: $route.path === '/demand' }">
-            {{ t('nav.demandForecast') }}
-          </router-link>
-          <router-link to="/reports" :class="{ active: $route.path === '/reports' }">
-            Reports
-          </router-link>
-        </nav>
+  <div class="app" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
+    <aside class="sidebar" :aria-expanded="!sidebarCollapsed">
+      <button
+        class="sidebar-toggle"
+        @click="sidebarCollapsed = !sidebarCollapsed"
+        :title="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+        :aria-label="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+      >
+        <svg v-if="!sidebarCollapsed" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>
+        <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+      </button>
+      <div class="sidebar-logo">
+        <h1>{{ t('nav.companyName') }}</h1>
+        <span class="sidebar-subtitle">{{ t('nav.subtitle') }}</span>
+      </div>
+      <nav class="sidebar-nav">
+        <router-link to="/" :class="{ active: $route.path === '/' }">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h8v8H3zm10 0h8v8h-8zM3 13h8v8H3zm10 0h8v8h-8z"/></svg>
+          <span>{{ t('nav.overview') }}</span>
+        </router-link>
+        <router-link to="/inventory" :class="{ active: $route.path === '/inventory' }">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20 7H4a1 1 0 00-1 1v11a1 1 0 001 1h16a1 1 0 001-1V8a1 1 0 00-1-1zM9 17H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zM20 5H4a1 1 0 000 2h16a1 1 0 000-2zM9 3h6v2H9z"/></svg>
+          <span>{{ t('nav.inventory') }}</span>
+        </router-link>
+        <router-link to="/orders" :class="{ active: $route.path === '/orders' }">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+          <span>{{ t('nav.orders') }}</span>
+        </router-link>
+        <router-link to="/spending" :class="{ active: $route.path === '/spending' }">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+          <span>{{ t('nav.finance') }}</span>
+        </router-link>
+        <router-link to="/demand" :class="{ active: $route.path === '/demand' }">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg>
+          <span>{{ t('nav.demandForecast') }}</span>
+        </router-link>
+        <router-link to="/restocking" :class="{ active: $route.path === '/restocking' }">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+          <span>{{ t('nav.restocking') }}</span>
+        </router-link>
+        <router-link to="/reports" :class="{ active: $route.path === '/reports' }">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM8 17v-2h8v2H8zm0-4v-2h8v2H8zm0-4V7h4v2H8z"/></svg>
+          <span>Reports</span>
+        </router-link>
+      </nav>
+      <div class="sidebar-footer">
         <LanguageSwitcher />
         <ProfileMenu
           @show-profile-details="showProfileDetails = true"
           @show-tasks="showTasks = true"
         />
       </div>
-    </header>
-    <FilterBar />
-    <main class="main-content">
-      <router-view />
-    </main>
-
-    <ProfileDetailsModal
-      :is-open="showProfileDetails"
-      @close="showProfileDetails = false"
-    />
-
-    <TasksModal
-      :is-open="showTasks"
-      :tasks="tasks"
-      @close="showTasks = false"
-      @add-task="addTask"
-      @delete-task="deleteTask"
-      @toggle-task="toggleTask"
-    />
+    </aside>
+    <div class="main-wrapper">
+      <FilterBar />
+      <main class="main-content">
+        <router-view />
+      </main>
+      <ProfileDetailsModal
+        :is-open="showProfileDetails"
+        @close="showProfileDetails = false"
+      />
+      <TasksModal
+        :is-open="showTasks"
+        :tasks="tasks"
+        @close="showTasks = false"
+        @add-task="addTask"
+        @delete-task="deleteTask"
+        @toggle-task="toggleTask"
+      />
+    </div>
   </div>
 </template>
 
@@ -80,6 +99,7 @@ export default {
     const showProfileDetails = ref(false)
     const showTasks = ref(false)
     const apiTasks = ref([])
+    const sidebarCollapsed = ref(false)
 
     // Merge mock tasks from currentUser with API tasks
     const tasks = computed(() => {
@@ -155,7 +175,8 @@ export default {
       tasks,
       addTask,
       deleteTask,
-      toggleTask
+      toggleTask,
+      sidebarCollapsed
     }
   }
 }
@@ -168,132 +189,216 @@ export default {
   box-sizing: border-box;
 }
 
+/* Global accessible focus indicator */
+:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  background: #f8fafc;
-  color: #1e293b;
+  font-family: 'Nunito', sans-serif;
+  background: #f5f0ff;
+  color: #111827;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 .app {
   display: flex;
-  flex-direction: column;
   min-height: 100vh;
 }
 
-.top-nav {
-  background: #ffffff;
-  border-bottom: 1px solid #e2e8f0;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
-  position: sticky;
+/* ── Sidebar ── */
+.sidebar {
+  position: fixed;
   top: 0;
+  left: 0;
+  bottom: 0;
+  width: 240px;
+  background: linear-gradient(180deg, #7c3aed 0%, #4f46e5 60%, #2563eb 100%);
+  display: flex;
+  flex-direction: column;
   z-index: 100;
+  overflow-y: auto;
+  /* Animate width when collapsing/expanding */
+  transition: width 0.25s ease;
 }
 
-.nav-container {
-  max-width: 1600px;
-  margin: 0 auto;
+.sidebar-logo {
+  padding: 1.5rem 1.25rem 1rem;
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+}
+
+.sidebar-logo h1 {
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.25rem;
+  color: #ffffff;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+}
+
+.sidebar-subtitle {
+  display: block;
+  font-size: 0.75rem;
+  color: #e0d9ff;
+  margin-top: 0.25rem;
+  font-weight: 600;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 0.75rem 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-nav a {
   display: flex;
   align-items: center;
-  padding: 0 2rem;
-  height: 70px;
-}
-
-.nav-container > .nav-tabs {
-  margin-left: auto;
-  margin-right: 1rem;
-}
-
-.nav-container > .language-switcher {
-  margin-right: 1rem;
-}
-
-.logo {
-  display: flex;
-  align-items: baseline;
   gap: 0.75rem;
-}
-
-.logo h1 {
-  font-size: 1.375rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 12px;
+  margin: 0.2rem 0.75rem;
   font-weight: 700;
-  color: #0f172a;
-  letter-spacing: -0.025em;
-}
-
-.subtitle {
-  font-size: 0.813rem;
-  color: #64748b;
-  font-weight: 400;
-  padding-left: 0.75rem;
-  border-left: 1px solid #e2e8f0;
-}
-
-.nav-tabs {
-  display: flex;
-  gap: 0.25rem;
-}
-
-.nav-tabs a {
-  padding: 0.625rem 1.25rem;
-  color: #64748b;
-  text-decoration: none;
-  font-weight: 500;
   font-size: 0.938rem;
-  border-radius: 6px;
+  text-decoration: none;
+  color: #e0d9ff;
   transition: all 0.2s ease;
-  position: relative;
 }
 
-.nav-tabs a:hover {
-  color: #0f172a;
-  background: #f1f5f9;
+.sidebar-nav a svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  opacity: 0.8;
 }
 
-.nav-tabs a.active {
-  color: #2563eb;
-  background: #eff6ff;
+.sidebar-nav a:hover {
+  background: rgba(255,255,255,0.12);
+  color: #ffffff;
 }
 
-.nav-tabs a.active::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: #2563eb;
+.sidebar-nav a:hover svg {
+  opacity: 1;
+}
+
+.sidebar-nav a.active {
+  background: rgba(255,255,255,0.22);
+  color: #ffffff;
+}
+
+.sidebar-nav a.active svg {
+  opacity: 1;
+}
+
+.sidebar-footer {
+  padding: 1rem 1rem 1.25rem;
+  border-top: 1px solid rgba(255,255,255,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ── Sidebar toggle button ── */
+.sidebar-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 100%;
+  padding: 0.75rem 1rem 0.5rem;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.6);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.sidebar-toggle:hover { color: #ffffff; }
+
+.sidebar-toggle svg { width: 20px; height: 20px; }
+
+.sidebar-toggle:focus-visible {
+  outline: 2px solid rgba(255,255,255,0.6);
+  outline-offset: 2px;
+}
+
+/* ── Collapsed sidebar states ── */
+.app.sidebar-collapsed .sidebar { width: 64px; }
+
+.app.sidebar-collapsed .main-wrapper { margin-left: 64px; }
+
+.app.sidebar-collapsed .sidebar-logo {
+  padding: 1rem 0;
+  display: flex;
+  justify-content: center;
+}
+
+.app.sidebar-collapsed .sidebar-logo h1 { display: none; }
+
+.app.sidebar-collapsed .sidebar-subtitle { display: none; }
+
+.app.sidebar-collapsed .sidebar-nav a {
+  justify-content: center;
+  padding: 0.75rem;
+  margin: 0.2rem 0.5rem;
+}
+
+.app.sidebar-collapsed .sidebar-nav a span { display: none; }
+
+.app.sidebar-collapsed .sidebar-nav a svg { opacity: 1; }
+
+.app.sidebar-collapsed .sidebar-footer {
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 0;
+  align-items: center;
+}
+
+/* Center the toggle icon when collapsed */
+.app.sidebar-collapsed .sidebar-toggle { justify-content: center; }
+
+/* ── Main wrapper ── */
+.main-wrapper {
+  margin-left: 240px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  /* Animate margin when sidebar collapses/expands */
+  transition: margin-left 0.25s ease;
 }
 
 .main-content {
   flex: 1;
-  max-width: 1600px;
+  max-width: 1400px;
   width: 100%;
   margin: 0 auto;
   padding: 1.5rem 2rem;
 }
 
+/* ── Page headers ── */
 .page-header {
   margin-bottom: 1.5rem;
 }
 
 .page-header h2 {
-  font-size: 1.875rem;
-  font-weight: 700;
-  color: #0f172a;
-  margin-bottom: 0.375rem;
-  letter-spacing: -0.025em;
+  font-family: 'Fredoka One', cursive;
+  font-size: 2rem;
+  font-weight: 400;
+  color: #2e1065;
+  margin-bottom: 0.25rem;
+  letter-spacing: 0.01em;
 }
 
 .page-header p {
-  color: #64748b;
+  color: #4b5563;
   font-size: 0.938rem;
 }
 
+/* ── Stats grid ── */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1.25rem;
   margin-bottom: 1.5rem;
 }
@@ -301,53 +406,47 @@ body {
 .stat-card {
   background: white;
   padding: 1.25rem;
-  border-radius: 10px;
-  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  border: 1px solid #ede9fe;
+  box-shadow: 0 4px 28px rgba(124,58,237,0.12);
   transition: all 0.2s ease;
 }
 
 .stat-card:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 36px rgba(124,58,237,0.18);
 }
 
 .stat-label {
-  color: #64748b;
-  font-size: 0.875rem;
-  font-weight: 600;
+  color: #4b5563;
+  font-size: 0.813rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.05em;
   margin-bottom: 0.625rem;
 }
 
 .stat-value {
   font-size: 2.25rem;
-  font-weight: 700;
-  color: #0f172a;
+  font-weight: 800;
+  color: #2e1065;
   letter-spacing: -0.025em;
 }
 
-.stat-card.warning .stat-value {
-  color: #ea580c;
-}
+/* Accessible semantic color variants — all pass WCAG AA on white */
+.stat-card.success .stat-value    { color: #059669; }
+.stat-card.warning .stat-value    { color: #d97706; }
+.stat-card.danger .stat-value     { color: #e11d48; }
+.stat-card.info .stat-value       { color: #0891b2; }
+.stat-card.restocking .stat-value { color: #0284c7; }
 
-.stat-card.success .stat-value {
-  color: #059669;
-}
-
-.stat-card.danger .stat-value {
-  color: #dc2626;
-}
-
-.stat-card.info .stat-value {
-  color: #2563eb;
-}
-
+/* ── Cards ── */
 .card {
   background: white;
-  border-radius: 10px;
+  border-radius: 18px;
   padding: 1.25rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #ede9fe;
+  box-shadow: 0 4px 28px rgba(124,58,237,0.12);
   margin-bottom: 1.25rem;
 }
 
@@ -357,16 +456,18 @@ body {
   align-items: center;
   margin-bottom: 1rem;
   padding-bottom: 0.875rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #ede9fe;
 }
 
 .card-title {
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: #0f172a;
-  letter-spacing: -0.025em;
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.25rem;
+  font-weight: 400;
+  color: #111827;
+  letter-spacing: 0.01em;
 }
 
+/* ── Tables ── */
 .table-container {
   overflow-x: auto;
 }
@@ -377,25 +478,26 @@ table {
 }
 
 thead {
-  background: #f8fafc;
-  border-top: 1px solid #e2e8f0;
-  border-bottom: 1px solid #e2e8f0;
+  background: #f5f0ff;
+  border-top: 1px solid #ede9fe;
+  border-bottom: 2px solid #ede9fe;
 }
 
 th {
   text-align: left;
-  padding: 0.5rem 0.75rem;
-  font-weight: 600;
-  color: #475569;
+  padding: 0.625rem 0.75rem;
+  font-weight: 700;
+  /* Dark blue — passes AA on light table header bg */
+  color: #7c3aed;
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 td {
-  padding: 0.5rem 0.75rem;
-  border-top: 1px solid #f1f5f9;
-  color: #334155;
+  padding: 0.625rem 0.75rem;
+  border-top: 1px solid #ede9fe;
+  color: #111827;
   font-size: 0.875rem;
 }
 
@@ -404,83 +506,51 @@ tbody tr {
 }
 
 tbody tr:hover {
-  background: #f8fafc;
+  /* Very light blue — visible but not distracting */
+  background: #f5f0ff;
 }
 
+/* ── Badges ── */
 .badge {
   display: inline-block;
   padding: 0.313rem 0.75rem;
-  border-radius: 6px;
+  border-radius: 20px;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.025em;
 }
 
-.badge.success {
-  background: #d1fae5;
-  color: #065f46;
-}
+/* All badge color pairs chosen for WCAG AA contrast and color-blind safety */
+.badge.success    { background: #d1fae5; color: #065f46; }
+.badge.warning    { background: #fef3c7; color: #92400e; }
+.badge.danger     { background: #ffe4e6; color: #9f1239; }
+.badge.info       { background: #e0f2fe; color: #164e63; }
+.badge.restocking { background: #e0f2fe; color: #075985; }
+.badge.increasing { background: #d1fae5; color: #065f46; }
+.badge.decreasing { background: #ffe4e6; color: #9f1239; }
+.badge.stable     { background: #ede9fe; color: #5b21b6; }
+.badge.high       { background: #fee2e2; color: #7f1d1d; }
+.badge.medium     { background: #fef3c7; color: #78350f; }
+.badge.low        { background: #e0f2fe; color: #0c4a6e; }
 
-.badge.warning {
-  background: #fed7aa;
-  color: #92400e;
-}
-
-.badge.danger {
-  background: #fecaca;
-  color: #991b1b;
-}
-
-.badge.info {
-  background: #dbeafe;
-  color: #1e40af;
-}
-
-.badge.increasing {
-  background: #d1fae5;
-  color: #065f46;
-}
-
-.badge.decreasing {
-  background: #fecaca;
-  color: #991b1b;
-}
-
-.badge.stable {
-  background: #e0e7ff;
-  color: #3730a3;
-}
-
-.badge.high {
-  background: #fecaca;
-  color: #991b1b;
-}
-
-.badge.medium {
-  background: #fed7aa;
-  color: #92400e;
-}
-
-.badge.low {
-  background: #dbeafe;
-  color: #1e40af;
-}
-
+/* ── Loading / Error ── */
 .loading {
   text-align: center;
   padding: 3rem;
-  color: #64748b;
+  color: #4b5563;
   font-size: 0.938rem;
+  font-weight: 600;
 }
 
 .error {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #991b1b;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #7f1d1d;
   padding: 1rem;
-  border-radius: 8px;
+  border-radius: 12px;
   margin: 1rem 0;
   font-size: 0.938rem;
+  font-weight: 600;
 }
 </style>
