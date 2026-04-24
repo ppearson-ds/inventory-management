@@ -89,6 +89,7 @@ class DemandForecast(BaseModel):
     forecasted_demand: int
     trend: str
     period: str
+    unit_cost: float
 
 class BacklogItem(BaseModel):
     id: str
@@ -119,6 +120,20 @@ class CreatePurchaseOrderRequest(BaseModel):
     unit_cost: float
     expected_delivery_date: str
     notes: Optional[str] = None
+
+class RestockingItem(BaseModel):
+    item_sku: str
+    item_name: str
+    quantity: int
+    unit_cost: float
+    line_total: float
+
+class CreateRestockingOrderRequest(BaseModel):
+    items: List[RestockingItem]
+    total_value: float
+
+# In-memory storage for submitted restocking orders
+restocking_orders = []
 
 # API endpoints
 @app.get("/")
@@ -303,6 +318,31 @@ def get_monthly_trends():
     result = list(months.values())
     result.sort(key=lambda x: x['month'])
     return result
+
+@app.post("/api/restocking-orders")
+def create_restocking_order(request: CreateRestockingOrderRequest):
+    """Create a restocking order from budget recommendations"""
+    from datetime import date, timedelta
+    order_number = f"RST-{len(restocking_orders) + 1:04d}"
+    order_date = date.today().isoformat()
+    # 7-day lead time for restocking orders
+    expected_delivery = (date.today() + timedelta(days=7)).isoformat()
+    order = {
+        "id": str(len(restocking_orders) + 1),
+        "order_number": order_number,
+        "status": "Restocking",
+        "order_date": order_date,
+        "expected_delivery": expected_delivery,
+        "total_value": request.total_value,
+        "items": [item.dict() for item in request.items]
+    }
+    restocking_orders.append(order)
+    return order
+
+@app.get("/api/restocking-orders")
+def get_restocking_orders():
+    """Get all submitted restocking orders"""
+    return restocking_orders
 
 if __name__ == "__main__":
     import uvicorn

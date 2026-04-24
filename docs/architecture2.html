@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Architecture — Factory Inventory Management</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #1a0a12;
+      --surface: #2a0f1e;
+      --border: #6b2d4a;
+      --text: #fce4ec;
+      --muted: #f48fb1;
+      --blue: #ff80ab;
+      --green: #f06292;
+      --amber: #ffb3c6;
+      --purple: #ce93d8;
+      --red: #ff4081;
+      --teal: #f8bbd0;
+    }
+
+    /* ── Sparkle animation ── */
+    @keyframes sparkle {
+      0%, 100% { opacity: 0; transform: scale(0) rotate(0deg); }
+      50%       { opacity: 1; transform: scale(1) rotate(180deg); }
+    }
+    @keyframes drift {
+      0%   { transform: translateY(0px) translateX(0px); }
+      33%  { transform: translateY(-8px) translateX(4px); }
+      66%  { transform: translateY(4px) translateX(-4px); }
+      100% { transform: translateY(0px) translateX(0px); }
+    }
+    @keyframes shimmer {
+      0%   { background-position: -200% center; }
+      100% { background-position: 200% center; }
+    }
+    @keyframes glow-pulse {
+      0%, 100% { box-shadow: 0 0 8px rgba(255,64,129,0.3), 0 0 20px rgba(255,64,129,0.1); }
+      50%       { box-shadow: 0 0 16px rgba(255,64,129,0.6), 0 0 40px rgba(255,64,129,0.2); }
+    }
+
+    /* Floating sparkle dots */
+    .sparkle-field {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .sparkle-field .sp {
+      position: absolute;
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: #ff80ab;
+      animation: sparkle var(--dur, 2s) ease-in-out infinite var(--delay, 0s),
+                 drift 6s ease-in-out infinite var(--delay, 0s);
+    }
+    .sparkle-field .sp::before {
+      content: '✦';
+      position: absolute;
+      font-size: 10px;
+      color: #ffb3c6;
+      top: -3px; left: -3px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── Top bar ── */
+    .topbar {
+      border-bottom: 1px solid var(--border);
+      padding: 14px 40px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: linear-gradient(90deg, #2a0f1e, #3d0f28, #2a0f1e);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      animation: glow-pulse 3s ease-in-out infinite;
+    }
+    .topbar .logo {
+      width: 20px; height: 20px;
+      background: linear-gradient(135deg, #ff4081, #f48fb1);
+      border-radius: 4px;
+      flex-shrink: 0;
+      box-shadow: 0 0 10px rgba(255,64,129,0.6);
+    }
+    .topbar h1 {
+      font-size: 14px; font-weight: 600;
+      background: linear-gradient(90deg, #ff80ab, #ffb3c6, #ce93d8, #ff80ab);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 3s linear infinite;
+    }
+    .topbar .sep { color: var(--border); margin: 0 4px; }
+    .topbar .sub { color: var(--muted); font-size: 13px; }
+    .topbar .badge {
+      margin-left: auto;
+      background: rgba(255,64,129,0.2);
+      color: #ff80ab;
+      border: 1px solid rgba(255,64,129,0.5);
+      border-radius: 20px;
+      padding: 2px 10px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    /* ── Layout ── */
+    .page { max-width: 1100px; margin: 0 auto; padding: 40px 40px 80px; }
+
+    section { margin-bottom: 56px; }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #ff80ab;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-shadow: 0 0 8px rgba(255,128,171,0.6);
+    }
+    .section-label::before { content: '✦ '; }
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, var(--border), transparent);
+    }
+
+    /* ── System diagram ── */
+    .diagram {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 36px 28px;
+      display: flex;
+      align-items: center;
+      gap: 0;
+      overflow-x: auto;
+      box-shadow: inset 0 0 40px rgba(255,64,129,0.05), 0 0 30px rgba(255,64,129,0.1);
+    }
+
+    .d-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .d-box {
+      border-radius: 8px;
+      padding: 14px 18px;
+      min-width: 170px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      position: relative;
+    }
+    .d-box .d-tag {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 4px;
+    }
+    .d-box .d-name { font-size: 13px; font-weight: 600; color: var(--text); }
+    .d-box .d-detail { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .d-box.blue  { border-color: rgba(255,128,171,0.6);  box-shadow: 0 0 10px rgba(255,128,171,0.15); } .d-box.blue  .d-tag { color: #ff80ab; }
+    .d-box.green { border-color: rgba(240,98,146,0.6);  box-shadow: 0 0 10px rgba(240,98,146,0.15);  } .d-box.green .d-tag { color: #f06292; }
+    .d-box.amber { border-color: rgba(206,147,216,0.6); box-shadow: 0 0 10px rgba(206,147,216,0.15); } .d-box.amber .d-tag { color: #ce93d8; }
+    .d-box.purple{ border-color: rgba(248,187,208,0.6); box-shadow: 0 0 10px rgba(248,187,208,0.15); } .d-box.purple .d-tag { color: #f8bbd0; }
+    .d-box.teal  { border-color: rgba(255,64,129,0.6);  box-shadow: 0 0 10px rgba(255,64,129,0.15);  } .d-box.teal  .d-tag { color: #ff4081; }
+
+    .d-arrow {
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      color: #6b2d4a;
+      font-size: 18px;
+      flex-shrink: 0;
+      align-self: center;
+      text-shadow: 0 0 6px rgba(255,64,129,0.4);
+    }
+
+    /* ── Two column ── */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } }
+
+    /* ── Panel ── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 0 0 0 transparent;
+      transition: box-shadow 0.3s;
+    }
+    .panel:hover {
+      box-shadow: 0 0 20px rgba(255,64,129,0.15);
+    }
+    .panel-head {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #f48fb1;
+      background: rgba(255,64,129,0.05);
+    }
+    .panel-body { padding: 16px; }
+
+    /* ── File tree ── */
+    .tree { font-family: "SF Mono", "Fira Code", Menlo, monospace; font-size: 12px; line-height: 1.8; }
+    .tree ul { list-style: none; padding-left: 16px; }
+    .tree > ul { padding-left: 0; }
+    .tree .d { color: #ff80ab; }
+    .tree .f { color: var(--muted); }
+    .tree .f.key { color: var(--text); }
+    .tree .ann { color: #444c56; font-style: italic; }
+    .tree .prefix { color: #30363d; user-select: none; }
+
+    /* ── Endpoint list ── */
+    .ep-group { margin-bottom: 20px; }
+    .ep-group:last-child { margin-bottom: 0; }
+    .ep-group-name {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .ep {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      padding: 5px 8px;
+      border-radius: 5px;
+      margin-bottom: 1px;
+    }
+    .ep:hover { background: rgba(255,255,255,0.04); }
+    .badge-method {
+      font-family: "SF Mono", monospace;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 3px;
+      min-width: 36px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .badge-method.get  { background: rgba(240,98,146,0.2);  color: #f06292; }
+    .badge-method.post { background: rgba(206,147,216,0.2); color: #ce93d8; }
+    .ep-path { font-family: "SF Mono", monospace; font-size: 12px; color: var(--text); }
+    .ep-filter { margin-left: auto; font-size: 11px; color: #444c56; white-space: nowrap; font-style: italic; }
+
+    /* ── Filter cards ── */
+    .filter-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    @media (max-width: 800px) { .filter-row { grid-template-columns: 1fr 1fr; } }
+
+    .fcard {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .fcard .fname { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .fcard .fparam { font-family: "SF Mono", monospace; font-size: 11px; color: #ff80ab; margin-bottom: 8px; }
+    .fcard .fvals { display: flex; flex-wrap: wrap; gap: 4px; }
+    .fval {
+      font-size: 11px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 1px 6px;
+      color: var(--muted);
+    }
+    .fval.all { color: #ff80ab; border-color: rgba(255,128,171,0.4); background: rgba(255,128,171,0.1); }
+
+    /* ── Models ── */
+    .model-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+    .model {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .model-head {
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.04);
+      border-bottom: 1px solid var(--border);
+      font-family: "SF Mono", monospace;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .model-head.blue   { color: #ff80ab; }
+    .model-head.green  { color: #f06292; }
+    .model-head.amber  { color: #ce93d8; }
+    .model-head.purple { color: #f8bbd0; }
+    .model-row {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      padding: 3px 12px;
+      font-family: "SF Mono", monospace;
+      font-size: 11px;
+    }
+    .model-row:last-child { padding-bottom: 10px; }
+    .model-row:first-child { padding-top: 8px; }
+    .mf { color: #ff80ab; }
+    .mt { color: var(--muted); }
+
+    /* ── Flow steps ── */
+    .flow-steps { display: flex; flex-direction: column; gap: 0; }
+    .flow-step { display: flex; gap: 16px; align-items: flex-start; }
+    .flow-step .step-left {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex-shrink: 0;
+      width: 28px;
+    }
+    .step-num {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: rgba(255,64,129,0.15);
+      border: 1px solid rgba(255,64,129,0.5);
+      color: #ff80ab;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 0 8px rgba(255,64,129,0.3);
+    }
+    .step-line {
+      width: 1px;
+      flex: 1;
+      background: var(--border);
+      min-height: 20px;
+      margin: 4px 0;
+    }
+    .flow-step:last-child .step-line { display: none; }
+    .step-content { padding: 2px 0 20px; }
+    .step-content .step-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+    .step-content .step-desc  { font-size: 12px; color: var(--muted); }
+    .step-content code {
+      font-family: "SF Mono", monospace;
+      font-size: 11px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 1px 5px;
+      color: var(--text);
+    }
+
+    /* ── Stack pills ── */
+    .stack-row { display: flex; flex-wrap: wrap; gap: 10px; }
+    .stack-pill {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .pill-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .pill-dot.blue   { background: #ff80ab; box-shadow: 0 0 6px #ff80ab; }
+    .pill-dot.green  { background: #f06292; box-shadow: 0 0 6px #f06292; }
+    .pill-dot.amber  { background: #ce93d8; box-shadow: 0 0 6px #ce93d8; }
+    .pill-dot.purple { background: #f8bbd0; box-shadow: 0 0 6px #f8bbd0; }
+    .pill-dot.teal   { background: #ff4081; box-shadow: 0 0 6px #ff4081; }
+    .pill-name { font-size: 13px; font-weight: 600; color: var(--text); }
+    .pill-detail { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  </style>
+</head>
+<body>
+
+<div class="sparkle-field" id="sparkles"></div>
+
+<div class="topbar">
+  <div class="logo"></div>
+  <h1>factory-inventory-management</h1>
+  <span class="sep">/</span>
+  <span class="sub">architecture</span>
+  <span class="badge">Demo · No DB</span>
+</div>
+
+<div class="page">
+
+  <!-- ── System Overview ── -->
+  <section>
+    <div class="section-label">System Overview</div>
+    <div class="diagram">
+      <div class="d-group">
+        <div class="d-box blue">
+          <div class="d-tag">Browser</div>
+          <div class="d-name">Vue 3 + Vite</div>
+          <div class="d-detail">localhost:3000</div>
+        </div>
+      </div>
+      <div class="d-arrow">→</div>
+      <div class="d-group">
+        <div class="d-box blue">
+          <div class="d-tag">Composable</div>
+          <div class="d-name">useFilters.js</div>
+          <div class="d-detail">Singleton filter state</div>
+        </div>
+        <div class="d-box blue">
+          <div class="d-tag">Views (6)</div>
+          <div class="d-name">Vue Router</div>
+          <div class="d-detail">Dashboard · Inventory · Orders…</div>
+        </div>
+        <div class="d-box blue">
+          <div class="d-tag">HTTP Client</div>
+          <div class="d-name">api.js / Axios</div>
+          <div class="d-detail">Builds query params</div>
+        </div>
+      </div>
+      <div class="d-arrow">→</div>
+      <div class="d-group">
+        <div class="d-box green">
+          <div class="d-tag">API</div>
+          <div class="d-name">FastAPI</div>
+          <div class="d-detail">localhost:8001</div>
+        </div>
+        <div class="d-box green">
+          <div class="d-tag">Validation</div>
+          <div class="d-name">Pydantic v2</div>
+          <div class="d-detail">Models + filtering</div>
+        </div>
+        <div class="d-box green">
+          <div class="d-tag">Server</div>
+          <div class="d-name">Uvicorn</div>
+          <div class="d-detail">ASGI · auto-reload</div>
+        </div>
+      </div>
+      <div class="d-arrow">→</div>
+      <div class="d-group">
+        <div class="d-box amber">
+          <div class="d-tag">Loader</div>
+          <div class="d-name">mock_data.py</div>
+          <div class="d-detail">Reads JSON on startup</div>
+        </div>
+        <div class="d-box amber">
+          <div class="d-tag">Storage</div>
+          <div class="d-name">7 JSON files</div>
+          <div class="d-detail">server/data/ · in-memory</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Tech Stack ── -->
+  <section>
+    <div class="section-label">Tech Stack</div>
+    <div class="stack-row">
+      <div class="stack-pill"><div><div class="pill-dot blue"></div></div><div><div class="pill-name">Vue 3</div><div class="pill-detail">Composition API · Options-free</div></div></div>
+      <div class="stack-pill"><div><div class="pill-dot blue"></div></div><div><div class="pill-name">Vite 5</div><div class="pill-detail">Dev server · HMR · port 3000</div></div></div>
+      <div class="stack-pill"><div><div class="pill-dot blue"></div></div><div><div class="pill-name">Vue Router 4</div><div class="pill-detail">Client-side routing · 6 routes</div></div></div>
+      <div class="stack-pill"><div><div class="pill-dot blue"></div></div><div><div class="pill-name">Axios</div><div class="pill-detail">HTTP client · query params</div></div></div>
+      <div class="stack-pill"><div><div class="pill-dot green"></div></div><div><div class="pill-name">FastAPI</div><div class="pill-detail">Python · async · port 8001</div></div></div>
+      <div class="stack-pill"><div><div class="pill-dot green"></div></div><div><div class="pill-name">Pydantic v2</div><div class="pill-detail">Schema validation · serialisation</div></div></div>
+      <div class="stack-pill"><div><div class="pill-dot green"></div></div><div><div class="pill-name">Uvicorn</div><div class="pill-detail">ASGI server</div></div></div>
+      <div class="stack-pill"><div><div class="pill-dot amber"></div></div><div><div class="pill-name">JSON files</div><div class="pill-detail">~7 files · no database</div></div></div>
+      <div class="stack-pill"><div><div class="pill-dot purple"></div></div><div><div class="pill-name">uv</div><div class="pill-detail">Python package manager</div></div></div>
+      <div class="stack-pill"><div><div class="pill-dot purple"></div></div><div><div class="pill-name">pytest</div><div class="pill-detail">Backend tests · TestClient</div></div></div>
+      <div class="stack-pill"><div><div class="pill-dot teal"></div></div><div><div class="pill-name">i18n (EN/JA)</div><div class="pill-detail">useI18n composable · localStorage</div></div></div>
+      <div class="stack-pill"><div><div class="pill-dot teal"></div></div><div><div class="pill-name">SVG Charts</div><div class="pill-detail">Custom — no chart library</div></div></div>
+    </div>
+  </section>
+
+  <!-- ── File Structure ── -->
+  <section>
+    <div class="section-label">Repository Structure</div>
+    <div class="two-col">
+      <div class="panel">
+        <div class="panel-head">client/src/</div>
+        <div class="panel-body">
+          <div class="tree">
+            <ul>
+              <li><span class="prefix">├─ </span><span class="f key">main.js</span> <span class="ann">app entry, router</span></li>
+              <li><span class="prefix">├─ </span><span class="f key">App.vue</span> <span class="ann">root, nav, global styles</span></li>
+              <li><span class="prefix">├─ </span><span class="f key">api.js</span> <span class="ann">all Axios calls centralised here</span></li>
+              <li><span class="prefix">├─ </span><span class="d">views/</span>
+                <ul>
+                  <li><span class="prefix">├─ </span><span class="f key">Dashboard.vue</span> <span class="ann">KPIs, charts</span></li>
+                  <li><span class="prefix">├─ </span><span class="f key">Inventory.vue</span> <span class="ann">stock table + modal</span></li>
+                  <li><span class="prefix">├─ </span><span class="f key">Orders.vue</span> <span class="ann">order list + detail</span></li>
+                  <li><span class="prefix">├─ </span><span class="f key">Demand.vue</span> <span class="ann">forecast table</span></li>
+                  <li><span class="prefix">├─ </span><span class="f key">Spending.vue</span> <span class="ann">financial breakdown</span></li>
+                  <li><span class="prefix">├─ </span><span class="f key">Reports.vue</span> <span class="ann">quarterly / monthly</span></li>
+                  <li><span class="prefix">└─ </span><span class="f key">Backlog.vue</span> <span class="ann">backlog + purchase orders</span></li>
+                </ul>
+              </li>
+              <li><span class="prefix">├─ </span><span class="d">components/</span>
+                <ul>
+                  <li><span class="prefix">├─ </span><span class="f key">FilterBar.vue</span> <span class="ann">4 global filter dropdowns</span></li>
+                  <li><span class="prefix">├─ </span><span class="f">*DetailModal.vue</span> <span class="ann">6 detail modals</span></li>
+                  <li><span class="prefix">├─ </span><span class="f">ProfileMenu.vue</span></li>
+                  <li><span class="prefix">└─ </span><span class="f">LanguageSwitcher.vue</span></li>
+                </ul>
+              </li>
+              <li><span class="prefix">├─ </span><span class="d">composables/</span>
+                <ul>
+                  <li><span class="prefix">├─ </span><span class="f key">useFilters.js</span> <span class="ann">singleton filter state</span></li>
+                  <li><span class="prefix">├─ </span><span class="f key">useI18n.js</span> <span class="ann">EN / JA translations</span></li>
+                  <li><span class="prefix">└─ </span><span class="f">useAuth.js</span></li>
+                </ul>
+              </li>
+              <li><span class="prefix">├─ </span><span class="d">locales/</span> <span class="ann">en.js · ja.js</span></li>
+              <li><span class="prefix">└─ </span><span class="d">utils/</span> <span class="ann">currency.js</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">server/</div>
+        <div class="panel-body">
+          <div class="tree">
+            <ul>
+              <li><span class="prefix">├─ </span><span class="f key">main.py</span> <span class="ann">FastAPI app + all endpoints</span></li>
+              <li><span class="prefix">├─ </span><span class="f key">mock_data.py</span> <span class="ann">JSON loader, in-memory store</span></li>
+              <li><span class="prefix">├─ </span><span class="f">pyproject.toml</span> <span class="ann">uv dependencies</span></li>
+              <li><span class="prefix">└─ </span><span class="d">data/</span>
+                <ul>
+                  <li><span class="prefix">├─ </span><span class="f key">inventory.json</span> <span class="ann">~50 SKUs</span></li>
+                  <li><span class="prefix">├─ </span><span class="f key">orders.json</span> <span class="ann">100+ orders (151 KB)</span></li>
+                  <li><span class="prefix">├─ </span><span class="f">demand_forecasts.json</span></li>
+                  <li><span class="prefix">├─ </span><span class="f">backlog_items.json</span></li>
+                  <li><span class="prefix">├─ </span><span class="f">spending.json</span></li>
+                  <li><span class="prefix">├─ </span><span class="f">transactions.json</span></li>
+                  <li><span class="prefix">└─ </span><span class="f">purchase_orders.json</span></li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="panel-head" style="border-top: 1px solid var(--border);">tests/backend/</div>
+        <div class="panel-body">
+          <div class="tree"><ul><li><span class="ann">pytest · FastAPI TestClient · httpx</span></li></ul></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Data Flow ── -->
+  <section>
+    <div class="section-label">Request Data Flow</div>
+    <div class="two-col">
+      <div class="panel">
+        <div class="panel-head">Step by step</div>
+        <div class="panel-body">
+          <div class="flow-steps">
+            <div class="flow-step">
+              <div class="step-left"><div class="step-num">1</div><div class="step-line"></div></div>
+              <div class="step-content">
+                <div class="step-title">User changes a filter</div>
+                <div class="step-desc"><code>FilterBar.vue</code> updates a ref in <code>useFilters.js</code></div>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="step-left"><div class="step-num">2</div><div class="step-line"></div></div>
+              <div class="step-content">
+                <div class="step-title">View reacts and fetches</div>
+                <div class="step-desc">A <code>watch()</code> fires; calls <code>api.js</code> with <code>getCurrentFilters()</code></div>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="step-left"><div class="step-num">3</div><div class="step-line"></div></div>
+              <div class="step-content">
+                <div class="step-title">api.js builds the URL</div>
+                <div class="step-desc">Non-<code>all</code> filters appended via <code>URLSearchParams</code></div>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="step-left"><div class="step-num">4</div><div class="step-line"></div></div>
+              <div class="step-content">
+                <div class="step-title">FastAPI filters in memory</div>
+                <div class="step-desc"><code>apply_filters()</code> + <code>filter_by_month()</code> on the in-memory list</div>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="step-left"><div class="step-num">5</div><div class="step-line"></div></div>
+              <div class="step-content">
+                <div class="step-title">Pydantic validates + serialises</div>
+                <div class="step-desc">Response validated against model, returned as JSON</div>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="step-left"><div class="step-num">6</div><div class="step-line"></div></div>
+              <div class="step-content">
+                <div class="step-title">Vue stores in a ref</div>
+                <div class="step-desc"><code>allOrders.value = response</code> — raw data kept intact</div>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="step-left"><div class="step-num">7</div><div class="step-line"></div></div>
+              <div class="step-content">
+                <div class="step-title">computed() derives display data</div>
+                <div class="step-desc">Aggregations, totals, chart data — cached until deps change</div>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="step-left"><div class="step-num">8</div></div>
+              <div class="step-content">
+                <div class="step-title">Template renders</div>
+                <div class="step-desc"><code>v-for</code> with unique <code>:key</code> (sku / id, never index)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">Core Pydantic Models</div>
+        <div class="panel-body">
+          <div class="model-grid">
+            <div class="model">
+              <div class="model-head blue">InventoryItem</div>
+              <div class="model-row"><span class="mf">sku, name</span><span class="mt">str</span></div>
+              <div class="model-row"><span class="mf">category, warehouse</span><span class="mt">str</span></div>
+              <div class="model-row"><span class="mf">quantity_on_hand</span><span class="mt">int</span></div>
+              <div class="model-row"><span class="mf">reorder_point</span><span class="mt">int</span></div>
+              <div class="model-row"><span class="mf">unit_cost</span><span class="mt">float</span></div>
+            </div>
+            <div class="model">
+              <div class="model-head green">Order</div>
+              <div class="model-row"><span class="mf">order_number</span><span class="mt">str</span></div>
+              <div class="model-row"><span class="mf">customer</span><span class="mt">str</span></div>
+              <div class="model-row"><span class="mf">items</span><span class="mt">list[OrderItem]</span></div>
+              <div class="model-row"><span class="mf">status</span><span class="mt">str</span></div>
+              <div class="model-row"><span class="mf">total_value</span><span class="mt">float</span></div>
+            </div>
+            <div class="model">
+              <div class="model-head amber">BacklogItem</div>
+              <div class="model-row"><span class="mf">item_sku, item_name</span><span class="mt">str</span></div>
+              <div class="model-row"><span class="mf">quantity_needed</span><span class="mt">int</span></div>
+              <div class="model-row"><span class="mf">quantity_available</span><span class="mt">int</span></div>
+              <div class="model-row"><span class="mf">days_delayed</span><span class="mt">int</span></div>
+              <div class="model-row"><span class="mf">priority</span><span class="mt">high/med/low</span></div>
+            </div>
+            <div class="model">
+              <div class="model-head purple">DemandForecast</div>
+              <div class="model-row"><span class="mf">item_sku, item_name</span><span class="mt">str</span></div>
+              <div class="model-row"><span class="mf">current_demand</span><span class="mt">int</span></div>
+              <div class="model-row"><span class="mf">forecasted_demand</span><span class="mt">int</span></div>
+              <div class="model-row"><span class="mf">trend</span><span class="mt">increasing…</span></div>
+              <div class="model-row"><span class="mf">period</span><span class="mt">Q4-2025</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Filters ── -->
+  <section>
+    <div class="section-label">Filter System</div>
+    <div class="filter-row">
+      <div class="fcard">
+        <div class="fname">Time Period</div>
+        <div class="fparam">?month=</div>
+        <div class="fvals">
+          <span class="fval all">all</span>
+          <span class="fval">2025-01</span><span class="fval">…</span><span class="fval">2025-12</span>
+          <span class="fval">Q1-2025</span><span class="fval">Q2</span><span class="fval">Q3</span><span class="fval">Q4</span>
+        </div>
+      </div>
+      <div class="fcard">
+        <div class="fname">Warehouse</div>
+        <div class="fparam">?warehouse=</div>
+        <div class="fvals">
+          <span class="fval all">all</span>
+          <span class="fval">San Francisco</span>
+          <span class="fval">London</span>
+          <span class="fval">Tokyo</span>
+        </div>
+      </div>
+      <div class="fcard">
+        <div class="fname">Category</div>
+        <div class="fparam">?category=</div>
+        <div class="fvals">
+          <span class="fval all">all</span>
+          <span class="fval">Circuit Boards</span>
+          <span class="fval">Sensors</span>
+          <span class="fval">Actuators</span>
+          <span class="fval">Controllers</span>
+          <span class="fval">Power Supplies</span>
+        </div>
+      </div>
+      <div class="fcard">
+        <div class="fname">Order Status</div>
+        <div class="fparam">?status=</div>
+        <div class="fvals">
+          <span class="fval all">all</span>
+          <span class="fval">Delivered</span>
+          <span class="fval">Shipped</span>
+          <span class="fval">Processing</span>
+          <span class="fval">Backordered</span>
+        </div>
+      </div>
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin-top:10px;">
+      Inventory: <code style="font-size:11px;background:rgba(255,255,255,0.06);padding:1px 5px;border-radius:3px;border:1px solid var(--border)">warehouse + category</code> only &nbsp;·&nbsp;
+      Demand / Backlog / Spending: no filters &nbsp;·&nbsp;
+      Orders + Dashboard: all 4 filters
+    </p>
+  </section>
+
+  <!-- ── API Endpoints ── -->
+  <section>
+    <div class="section-label">API Endpoints — localhost:8001</div>
+    <div class="two-col">
+      <div class="panel">
+        <div class="panel-body">
+          <div class="ep-group">
+            <div class="ep-group-name">Inventory</div>
+            <div class="ep"><span class="badge-method get">GET</span><span class="ep-path">/api/inventory</span><span class="ep-filter">warehouse, category</span></div>
+            <div class="ep"><span class="badge-method get">GET</span><span class="ep-path">/api/inventory/{id}</span></div>
+          </div>
+          <div class="ep-group">
+            <div class="ep-group-name">Orders</div>
+            <div class="ep"><span class="badge-method get">GET</span><span class="ep-path">/api/orders</span><span class="ep-filter">all 4 filters</span></div>
+            <div class="ep"><span class="badge-method get">GET</span><span class="ep-path">/api/orders/{id}</span></div>
+          </div>
+          <div class="ep-group">
+            <div class="ep-group-name">Dashboard</div>
+            <div class="ep"><span class="badge-method get">GET</span><span class="ep-path">/api/dashboard/summary</span><span class="ep-filter">all 4 filters</span></div>
+          </div>
+          <div class="ep-group">
+            <div class="ep-group-name">Demand &amp; Backlog</div>
+            <div class="ep"><span class="badge-method get">GET</span><span class="ep-path">/api/demand</span><span class="ep-filter">no filters</span></div>
+            <div class="ep"><span class="badge-method get">GET</span><span class="ep-path">/api/backlog</span><span class="ep-filter">no filters</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-body">
+          <div class="ep-group">
+            <div class="ep-group-name">Spending</div>
+            <div class="ep"><span class="badge-method get">GET</span><span class="ep-path">/api/spending/summary</span><span class="ep-filter">no filters</span></div>
+            <div class="ep"><span class="badge-method get">GET</span><span class="ep-path">/api/spending/monthly</span></div>
+            <div class="ep"><span class="badge-method get">GET</span><span class="ep-path">/api/spending/categories</span></div>
+            <div class="ep"><span class="badge-method get">GET</span><span class="ep-path">/api/spending/transactions</span></div>
+          </div>
+          <div class="ep-group">
+            <div class="ep-group-name">Reports</div>
+            <div class="ep"><span class="badge-method get">GET</span><span class="ep-path">/api/reports/quarterly</span></div>
+            <div class="ep"><span class="badge-method get">GET</span><span class="ep-path">/api/reports/monthly-trends</span></div>
+          </div>
+          <div class="ep-group">
+            <div class="ep-group-name">Tasks &amp; Purchase Orders</div>
+            <div class="ep"><span class="badge-method get">GET</span><span class="ep-path">/api/tasks</span></div>
+            <div class="ep"><span class="badge-method post">POST</span><span class="ep-path">/api/tasks</span></div>
+            <div class="ep"><span class="badge-method post">POST</span><span class="ep-path">/api/purchase-orders</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+<script>
+  // Populate sparkle field with randomly positioned glitter dots
+  const field = document.getElementById('sparkles');
+  const count = 60;
+  for (let i = 0; i < count; i++) {
+    const sp = document.createElement('div');
+    sp.className = 'sp';
+    sp.style.left   = Math.random() * 100 + '%';
+    sp.style.top    = Math.random() * 100 + '%';
+    sp.style.setProperty('--dur',   (1.5 + Math.random() * 3) + 's');
+    sp.style.setProperty('--delay', (Math.random() * 4) + 's');
+    // Vary colours between pink shades
+    const cols = ['#ff80ab','#f48fb1','#ffb3c6','#ff4081','#ce93d8','#f8bbd0'];
+    sp.style.background = cols[Math.floor(Math.random() * cols.length)];
+    sp.style.width  = (2 + Math.random() * 4) + 'px';
+    sp.style.height = sp.style.width;
+    field.appendChild(sp);
+  }
+</script>
+</body>
+</html>

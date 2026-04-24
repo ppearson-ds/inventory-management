@@ -25,6 +25,11 @@
           <div class="stat-label">{{ t('status.backordered') }}</div>
           <div class="stat-value">{{ getOrdersByStatus('Backordered').length }}</div>
         </div>
+        <!-- Only show restocking stat card when restocking orders exist -->
+        <div v-if="restockingOrders.length > 0" class="stat-card restocking">
+          <div class="stat-label">{{ t('status.restocking') }}</div>
+          <div class="stat-value">{{ restockingOrders.length }}</div>
+        </div>
       </div>
 
       <div class="card">
@@ -75,6 +80,39 @@
         </div>
       </div>
     </div>
+
+    <!-- Submitted restocking orders section — independent of main order filters -->
+    <div v-if="restockingOrders.length > 0" class="card restocking-card">
+      <div class="card-header">
+        <h3 class="card-title">{{ t('restocking.submittedOrders') }}</h3>
+      </div>
+      <div class="table-container">
+        <table class="orders-table restocking-table">
+          <thead>
+            <tr>
+              <th class="col-order-number">{{ t('orders.table.orderNumber') }}</th>
+              <th class="col-items">{{ t('orders.table.items') }}</th>
+              <th class="col-date">{{ t('orders.table.orderDate') }}</th>
+              <th class="col-date">{{ t('orders.table.expectedDelivery') }}</th>
+              <th class="col-value">{{ t('orders.table.totalValue') }}</th>
+              <th class="col-status">{{ t('orders.table.status') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="order in restockingOrders" :key="order.order_number">
+              <td class="col-order-number"><strong>{{ order.order_number }}</strong></td>
+              <td class="col-items">{{ order.items.length }} items</td>
+              <td class="col-date">{{ formatDate(order.order_date) }}</td>
+              <td class="col-date">{{ formatDate(order.expected_delivery) }}</td>
+              <td class="col-value"><strong>${{ order.total_value.toLocaleString() }}</strong></td>
+              <td class="col-status">
+                <span class="badge restocking">Restocking</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -95,6 +133,8 @@ export default {
     const loading = ref(true)
     const error = ref(null)
     const orders = ref([])
+    // Restocking orders are fetched independently — not affected by filters
+    const restockingOrders = ref([])
 
     // Use shared filters
     const {
@@ -138,7 +178,8 @@ export default {
         'Delivered': 'success',
         'Shipped': 'info',
         'Processing': 'warning',
-        'Backordered': 'danger'
+        'Backordered': 'danger',
+        'Restocking': 'restocking'
       }
       return statusMap[status] || 'info'
     }
@@ -153,13 +194,26 @@ export default {
       })
     }
 
-    onMounted(loadOrders)
+    const loadRestockingOrders = async () => {
+      try {
+        restockingOrders.value = await api.getRestockingOrders()
+      } catch (err) {
+        // Non-critical: log but don't surface as a page-level error
+        console.error('Failed to load restocking orders:', err)
+      }
+    }
+
+    onMounted(() => {
+      // Fetch both in parallel; restocking orders are filter-independent
+      Promise.all([loadOrders(), loadRestockingOrders()])
+    })
 
     return {
       t,
       loading,
       error,
       orders,
+      restockingOrders,
       getOrdersByStatus,
       getOrderStatusClass,
       formatDate,
